@@ -1,0 +1,95 @@
+name: BUILD APK
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper/
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set Build Variables
+        id: vars
+        run: |
+          echo "DATE=$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+          echo "RUN_ID=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Clean Build
+        run: ./gradlew clean
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Rename APKs
+        run: |
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/FT-Template-Debug-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/FT-Template-Release-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FT-Template-Debug-Build${{ env.RUN_ID }}
+          path: app/build/outputs/apk/debug/FT-Template-Debug-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FT-Template-Release-Build${{ env.RUN_ID }}
+          path: app/build/outputs/apk/release/FT-Template-Release-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
+
+      - name: Upload Mapping File
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-Build${{ env.RUN_ID }}
+          path: app/build/outputs/mapping/release/mapping.txt
+
+      - name: Set APK paths for Telegram
+        run: |
+          echo "DEBUG_APK=app/build/outputs/apk/debug/FT-Template-Debug-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk" >> $GITHUB_ENV
+          echo "RELEASE_APK=app/build/outputs/apk/release/FT-Template-Release-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk" >> $GITHUB_ENV
+
+      - name: Run Telegram sender
+        run: |
+          chmod +x .github/scripts/ft.sh
+          .github/scripts/ft.sh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_ID: ${{ env.RUN_ID }}
+          SHORT_SHA: ${{ env.SHORT_SHA }}
+          DATE: ${{ env.DATE }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}

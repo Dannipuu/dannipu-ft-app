@@ -3,7 +3,6 @@
 BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
 CHAT_ID="${TELEGRAM_CHAT_ID}"
 DEBUG_APK="${DEBUG_APK}"
-RELEASE_APK="${RELEASE_APK}"
 RUN_ID="${RUN_ID}"
 SHORT_SHA="${SHORT_SHA}"
 DATE="${DATE}"
@@ -48,19 +47,6 @@ else
     echo "Debug APK not found: ${DEBUG_APK}"
 fi
 
-if [ -f "$RELEASE_APK" ]; then
-    RELEASE_SIZE=$(du -h "$RELEASE_APK" | cut -f1)
-    send_to_telegram "${RELEASE_APK}" "Release APK
-Build: #${RUN_ID}
-Repository: ${REPO}
-Branch: ${BRANCH}
-Commit: ${COMMIT}
-Date: ${DATE}
-Size: ${RELEASE_SIZE}"
-else
-    echo "Release APK not found: ${RELEASE_APK}"
-fi
-
 send_message "Build Complete!
 Status: Success
 Repository: ${REPO}
@@ -69,6 +55,6 @@ Commit: ${COMMIT}
 Run ID: #${RUN_ID}
 Date: ${DATE}
 
-APK files sent to Telegram!"
+APK sent to Telegram!"
 
 echo "Done!"

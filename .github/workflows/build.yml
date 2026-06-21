@@ -43,6 +43,7 @@ jobs:
       - name: Generate debug keystore
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug, O=Android, C=US"
+          mv debug.keystore app/
 
       - name: Set Build Variables
         id: vars
@@ -54,22 +55,13 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Clean Build
-        run: ./gradlew clean
-
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
-
-      - name: Rename APKs
+      - name: Rename Debug APK
         run: |
           if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
             mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/FT-Template-Debug-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
-          fi
-          if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
-            mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/FT-Template-Release-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk
           fi
 
       - name: Upload Debug APK
@@ -78,16 +70,9 @@ jobs:
           name: FT-Template-Debug-Build${{ env.RUN_ID }}
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FT-Template-Release-Build${{ env.RUN_ID }}
-          path: app/build/outputs/apk/release/*.apk
-
-      - name: Set APK paths for Telegram
+      - name: Set APK path for Telegram
         run: |
           echo "DEBUG_APK=app/build/outputs/apk/debug/FT-Template-Debug-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk" >> $GITHUB_ENV
-          echo "RELEASE_APK=app/build/outputs/apk/release/FT-Template-Release-Build${{ env.RUN_ID }}-${{ env.SHORT_SHA }}-${{ env.DATE }}.apk" >> $GITHUB_ENV
 
       - name: Run Telegram sender
         run: |
